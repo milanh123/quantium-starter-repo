@@ -1,29 +1,105 @@
 import pandas as pd
-import glob
+from dash import Dash, html, dcc, Input, Output
+import plotly.express as px
 
-files = glob.glob("data/*.csv")
-df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
+# Load the data
+sales_data = pd.read_csv("formatted_output.csv")
 
-df.columns = df.columns.str.strip()
-df["product"] = df["product"].astype(str).str.strip().str.lower()
+# Convert Date column to datetime and sort
+sales_data["Date"] = pd.to_datetime(sales_data["Date"])
+sales_data = sales_data.sort_values("Date")
 
-df = df[df["product"].str.contains("pink", na=False)]
+# Create app
+app = Dash(__name__)
 
-df["price"] = (
-    df["price"]
-    .astype(str)
-    .str.replace("$", "", regex=False)
-    .astype(float)
+app.layout = html.Div(
+    style={
+        "backgroundColor": "#f4f6f8",
+        "minHeight": "100vh",
+        "padding": "30px",
+        "fontFamily": "Arial, sans-serif",
+    },
+    children=[
+        html.Div(
+            style={
+                "maxWidth": "1000px",
+                "margin": "0 auto",
+                "backgroundColor": "white",
+                "padding": "30px",
+                "borderRadius": "12px",
+                "boxShadow": "0 4px 12px rgba(0,0,0,0.1)",
+            },
+            children=[
+                html.H1(
+                    "Pink Morsels Sales Dashboard",
+                    style={
+                        "textAlign": "center",
+                        "color": "#2c3e50",
+                        "marginBottom": "10px",
+                    },
+                ),
+
+                html.P(
+                    "Use the radio buttons below to filter sales by region.",
+                    style={
+                        "textAlign": "center",
+                        "color": "#555",
+                        "marginBottom": "25px",
+                    },
+                ),
+
+                dcc.RadioItems(
+                    id="region-filter",
+                    options=[
+                        {"label": "All", "value": "all"},
+                        {"label": "North", "value": "north"},
+                        {"label": "East", "value": "east"},
+                        {"label": "South", "value": "south"},
+                        {"label": "West", "value": "west"},
+                    ],
+                    value="all",
+                    inline=True,
+                    style={
+                        "textAlign": "center",
+                        "marginBottom": "30px",
+                    },
+                    inputStyle={"marginRight": "6px", "marginLeft": "12px"},
+                ),
+
+                dcc.Graph(id="sales-line-chart"),
+            ],
+        )
+    ],
 )
 
-df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
-df["Sales"] = df["quantity"] * df["price"]
 
-output_df = df[["Sales", "date", "region"]].copy()
-output_df.columns = ["Sales", "Date", "Region"]
+@app.callback(
+    Output("sales-line-chart", "figure"),
+    Input("region-filter", "value"),
+)
+def update_chart(selected_region):
+    if selected_region == "all":
+        filtered_data = sales_data
+    else:
+        filtered_data = sales_data[sales_data["Region"].str.lower() == selected_region]
 
-output_df.index += 1
-output_df.to_csv("formatted_output.csv", index=False)
+    figure = px.line(
+        filtered_data,
+        x="Date",
+        y="Sales",
+        title=f"Sales Over Time - {selected_region.title()}",
+        labels={"Date": "Date", "Sales": "Sales"},
+    )
 
-print(output_df.head())
-print(f"Rows written: {len(output_df)}")
+    figure.update_layout(
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(color="#2c3e50"),
+        title_x=0.5,
+    )
+
+    return figure
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
