@@ -38,7 +38,6 @@ app.layout = html.Div(
                         "marginBottom": "10px",
                     },
                 ),
-
                 html.P(
                     "Use the radio buttons below to filter sales by region.",
                     style={
@@ -47,7 +46,6 @@ app.layout = html.Div(
                         "marginBottom": "25px",
                     },
                 ),
-
                 dcc.RadioItems(
                     id="region-filter",
                     options=[
@@ -65,7 +63,6 @@ app.layout = html.Div(
                     },
                     inputStyle={"marginRight": "6px", "marginLeft": "12px"},
                 ),
-
                 dcc.Graph(id="sales-line-chart"),
             ],
         )
@@ -79,9 +76,11 @@ app.layout = html.Div(
 )
 def update_chart(selected_region):
     if selected_region == "all":
-        filtered_data = sales_data
+        filtered_data = sales_data.copy()
     else:
-        filtered_data = sales_data[sales_data["Region"].str.lower() == selected_region]
+        filtered_data = sales_data[
+            sales_data["Region"].str.lower() == selected_region
+        ].copy()
 
     figure = px.line(
         filtered_data,
